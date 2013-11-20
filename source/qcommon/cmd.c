@@ -1184,10 +1184,9 @@ char **Cmd_CompleteFileList( const char *partial, const char *basedir, const cha
 	buf = ( char ** )Mem_TempMalloc( buf_size );
 	list = ( char * )( buf + total + 1 );
 
-	offset = Cmd_CompleteFileListPass( dir, subdir, prefix, extension, qfalse, list, numfiles, &size_files, buf );
+	offset = Cmd_CompleteFileListPass( dir, subdir, prefix, extension, qfalse, list, numfiles, &size_files, buf + numdirs );
 	if( subdirectories )
 	{
-		memmove( buf + numdirs, buf, offset * sizeof( char * ) );
 		actual_dirs = Cmd_CompleteFileListPass( dir, subdir, prefix, "/", qtrue, list + size_files, numdirs, &size_dirs, buf );
 		if( actual_dirs < numdirs ) // files where shifted too much, move them back
 			memmove( buf + actual_dirs, buf + numdirs, offset * sizeof( char * ) );
