@@ -1037,6 +1037,81 @@ char **Cmd_CompleteBuildArgList( const char *partial )
 }
 
 /*
+ * Cmd_CompleteFileListPass
+ */
+static int Cmd_CompleteFileListPass( const char *dir, const char *subdir, const char *prefix, const char *extension, qboolean subdirectories, char *list, int maxitems, size_t *size, char **buf )
+{
+	size_t subdir_length;
+	size_t prefix_length;
+	size_t remaining;
+	int numitems;
+	int i, offset, len;
+	char *ext;
+
+	subdir_length = strlen( subdir );
+	prefix_length = strlen( prefix );
+
+	// get all files in the directory
+	numitems = FS_GetFileList( dir, extension, list, *size, 0, 0 );
+	if( numitems > maxitems )
+		numitems = maxitems; // more than allocated for, need to discard some
+
+	remaining = *size;
+	offset = 0;
+	for( i = 0; i < numitems; i++ )
+	{
+		len = strlen( list );
+		if( !Q_strnicmp( prefix, list, prefix_length ) )
+		{
+			ext = extension && *extension ? list + len - strlen( extension ) : NULL;
+			if( list[len - 1] == '/' )
+			{
+				if( !subdirectories )
+				{
+					// ignore directories
+					list += len + 1;
+					remaining -= len + 1;
+					continue;
+				}
+			}
+			else if( !ext )
+			{
+				// do nothing
+			}
+			else if( ext >= list && !Q_stricmp( ext, extension ) )
+			{
+				// remove the extension
+				*ext = '\0';
+			}
+			else
+			{
+				// ignore other files
+				list += len + 1;
+				remaining -= len + 1;
+				continue;
+			}
+
+			if( *subdir )
+			{
+				// searching in a subdirectory, prepend it
+				memmove( list + subdir_length, list, remaining );
+				memcpy( list, subdir, subdir_length );
+
+				len += subdir_length;
+				remaining += subdir_length;
+				*size += subdir_length;
+			}
+			buf[offset++] = list;
+		}
+
+		list += len + 1;
+		remaining -= len + 1;
+	}
+
+	return offset;
+}
+
+/*
 * Cmd_CompleteFileList
 *
 * Find matching files
@@ -1047,20 +1122,17 @@ char **Cmd_CompleteFileList( const char *partial, const char *basedir, const cha
 	char dir[MAX_QPATH];
 	char subdir[MAX_QPATH];
 	char prefix[MAX_QPATH];
-	int prefix_length;
-	int subdir_length;
+	size_t subdir_length;
+	int numfiles;
+	int numdirs;
 	int total;
-	size_t size;
+	size_t size_files;
+	size_t size_dirs;
 	size_t buf_size;
-	size_t total_size;
 	char **buf;
 	char *list;
-	char *ext;
-	int i, j, len;
-	int numitems;
-	int pass;
-	int numpasses;
-	int numdirs, numdirs_added;
+	int offset;
+	int actual_dirs;
 
 	// locate the basename (prefix) of the partial name
 	for( p = partial + strlen( partial ); p >= partial && *p != '/'; p-- )
@@ -1068,135 +1140,60 @@ char **Cmd_CompleteFileList( const char *partial, const char *basedir, const cha
 	p++;
 
 	Q_strncpyz( prefix, p, sizeof( prefix ) );
-	prefix_length = strlen( prefix );
 
 	// determine the searching directory
 	// if we are searching in a subdirectory, this subdirectory will have
 	// to be prepended to all results
 	strcpy( dir, basedir );
 	subdir[0] = '\0';
+	subdir_length = 0;
 	if( p > partial )
 	{
-		size_t subdir_len;
-
 		if( !subdirectories )
 			return NULL;
 		if( dir[0] )
 			Q_strncatz( dir, "/", sizeof( dir ) );
 		Q_strncpyz( subdir, partial, min( p - partial, sizeof( subdir ) ) );
-		for( subdir_len = strlen( subdir ); subdir[subdir_len-1] == '/'; subdir_len-- ) subdir[subdir_len-1] = '/0';
+		for( subdir_length = strlen( subdir ); subdir[subdir_length-1] == '/'; subdir_length-- )
+			subdir[subdir_length-1] = '\0';
 		Q_strncatz( dir, subdir, sizeof( dir ) );
 		Q_strncatz( subdir, "/", sizeof( subdir ) );
-	}
-
-	total = 0;
-	total_size = 0;
-	numpasses = 0;
-
-	// passing NULL for extension forces subdirectories
-	if( !extension ) {
-		subdirectories = qtrue;
+		subdir_length++;
 	}
 
 	numdirs = 0;
-	numdirs_added = 0;
-	if( subdirectories ) {
+	size_dirs = 0;
+	if( subdirectories )
+	{
 		// count the total amount of subdirectories in the directory
-		numdirs = FS_GetFileListExt( dir, "/", NULL, &size, 0, 0 );
-		if( numdirs ) {
-			total += numdirs;
-			total_size += size;
-			numpasses++;
-		}
+		numdirs = FS_GetFileListExt( dir, "/", NULL, &size_dirs, 0, 0 );
+		if( !numdirs )
+			subdirectories = qfalse;
 	}
 
 	// count the total amount of files in the directory
-	numitems = FS_GetFileListExt( dir, extension, NULL, &size, 0, 0 );
-	total += numitems;
-	total_size += size;
-	numpasses++;
+	numfiles = FS_GetFileListExt( dir, extension, NULL, &size_files, 0, 0 );
 
+	total = numdirs + numfiles;
 	if( !total )
 		return NULL;
 
-	subdir_length = strlen( subdir );
 	buf_size = 	( total + 1 ) * sizeof( char * )	// resulting pointer list with NULL ending
-				+ total_size						// actual strings
-				+ total * subdir_length;			// extra space to prepend subdirs
-	buf = ( char ** )Mem_TempMalloc( buf_size );							
-	list = ( char * )buf + ( total + 1 ) * sizeof( char * );
+				+ size_dirs + size_files			// actual strings
+				+ ( total ) * subdir_length;		// extra space to prepend subdirs
+	buf = ( char ** )Mem_TempMalloc( buf_size );
+	list = ( char * )( buf + total + 1 );
 
-	// get all files in the directory
-
-	size = total_size;
-	for( pass = 0; pass < numpasses; pass++ )
+	offset = Cmd_CompleteFileListPass( dir, subdir, prefix, extension, qfalse, list, numfiles, &size_files, buf );
+	if( subdirectories )
 	{
-		if( pass > 0 ) {
-			// prepend subdirectories
-			j = 0;
-			numitems = FS_GetFileList( dir, "/", list, size, 0, 0 );
-		}
-		else {
-			// take advantage of FS_GetFileList caching
-			j = numdirs;
-			numitems = FS_GetFileList( dir, extension, list, size, 0, 0 );
-		}
-
-		for( i = 0; i < numitems; i++ )
-		{
-			len = strlen( list );
-			if( !Q_strnicmp( prefix, list, prefix_length ) )
-			{
-				ext = extension && *extension ? list + len - strlen( extension ) : NULL;
-				if( list[len - 1] == '/' )
-				{
-					if( !pass || !subdirectories )
-					{
-						// ignore directories
-						list += len + 1;
-						size -= len + 1;
-						continue;
-					}
-					numdirs_added++;
-				}
-				else if( !ext )
-				{
-					// do nothing
-				}
-				else if( ext >= list && !Q_stricmp( ext, extension ) )
-				{
-					// remove the extension
-					*ext = '\0';
-				}
-				else
-				{
-					// ignore other files
-					list += len + 1;
-					size -= len + 1;
-					continue;
-				}
-
-				if( *subdir )
-				{
-					// searching in a subdirectory, prepend it
-					memmove( list + subdir_length, list, size );
-					memcpy( list, subdir, subdir_length );
-
-					len += subdir_length;
-					size += subdir_length;
-				}
-				buf[j++] = list;
-			}
-
-			list += len + 1;
-			size -= len + 1;
-		}
+		memmove( buf + numdirs, buf, offset * sizeof( char * ) );
+		actual_dirs = Cmd_CompleteFileListPass( dir, subdir, prefix, "/", qtrue, list + size_files, numdirs, &size_dirs, buf );
+		if( actual_dirs < numdirs ) // files where shifted too much, move them back
+			memmove( buf + actual_dirs, buf + numdirs, offset * sizeof( char * ) );
+		offset += actual_dirs;
 	}
-	buf[total] = NULL;
-
-	if( numdirs > numdirs_added ) {
-		memmove( buf + numdirs_added, buf + numdirs, ( total - numdirs ) * sizeof ( char * ) );
-	}
+	buf[offset] = NULL;
 
 	return buf;
 }
