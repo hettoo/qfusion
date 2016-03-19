@@ -759,6 +759,48 @@ static void Cmd_SayTeam_f( edict_t *ent )
 	G_Say_Team( ent, trap_Cmd_Args(), true );
 }
 
+/*
+* Cmd_PersonalMessage_f
+*/
+void Cmd_PersonalMessage_f( edict_t *ent )
+{
+	edict_t *target;
+	char text[MAX_CHAT_BYTES - 9];
+	int i;
+
+	if( CheckFlood( ent, false ) )
+		return;
+
+	if( ent->r.client && ent->r.client->muted & 1 )
+		return;
+
+	if( trap_Cmd_Argc() < 3 )
+	{
+		G_PrintMsg( ent, "Usage: pm <player> <message>\n" );
+		return;
+	}
+
+	target = G_PlayerForText( trap_Cmd_Argv( 1 ) );
+
+	if( !target )
+	{
+		G_PrintMsg( ent, "Usage: pm <player> <message>\n" );
+		return;
+	}
+
+	text[0] = 0;
+	for( i = 2; i < trap_Cmd_Argc(); i++ )
+	{
+		Q_strncatz( text, trap_Cmd_Argv( i ), sizeof( text ) );
+		Q_strncatz( text, " ", sizeof( text ) );
+	}
+
+	G_PrintMsg( ent, "%s%s <<< %s%s\n", target->r.client->netname, S_COLOR_GREEN, text, S_COLOR_WHITE );
+	G_PrintMsg( target, "%s%s >>> %s%s\n", ent->r.client->netname, S_COLOR_GREEN, text, S_COLOR_WHITE );
+
+	G_LocalSound( target, CHAN_AUTO, trap_SoundIndex( S_CHAT ) );
+}
+
 typedef struct
 {
 	const char *name;
@@ -1343,6 +1385,7 @@ void G_InitGameCommands( void )
 	G_AddCommand( "stats", Cmd_ShowStats_f );
 	G_AddCommand( "say", Cmd_SayCmd_f );
 	G_AddCommand( "say_team", Cmd_SayTeam_f );
+	G_AddCommand( "pm", Cmd_PersonalMessage_f );
 	G_AddCommand( "svscore", Cmd_Score_f );
 	G_AddCommand( "god", Cmd_God_f );
 	G_AddCommand( "noclip", Cmd_Noclip_f );
