@@ -1591,112 +1591,18 @@ void PM_AdjustViewheight( void )
 		pm->playerState->viewheight -= height;
 }
 
-static bool PM_GoodPosition( int snaptorigin[3] )
+/*
+* PM_SnapVelocity
+* 
+* On exit, the velocity will have a value that is pre-quantized to the (1.0/16.0)
+* precision of the network channel.
+*/
+static void PM_SnapVelocity( void )
 {
-	trace_t	trace;
-	vec3_t origin, end;
 	int i;
 
-	if( pm->playerState->pmove.pm_type == PM_SPECTATOR )
-		return true;
-
 	for( i = 0; i < 3; i++ )
-		origin[i] = end[i] = snaptorigin[i]*( 1.0/PM_VECTOR_SNAP );
-	module_Trace( &trace, origin, pm->mins, pm->maxs, end, pm->playerState->POVnum, pm->contentmask, 0 );
-
-	return !trace.allsolid ? true : false;
-}
-
-/*
-* PM_SnapPosition
-* 
-* On exit, the origin will have a value that is pre-quantized to the (1.0/16.0)
-* precision of the network channel and in a valid position.
-*/
-static void PM_SnapPosition( void )
-{
-	int sign[3];
-	int i, j, bits;
-	int base[3];
-	int velint[3], origint[3];
-	// try all single bits first
-	static const int jitterbits[8] = { 0, 4, 1, 2, 3, 5, 6, 7 };
-
-	// snap velocity to sixteenths
-	for( i = 0; i < 3; i++ )
-	{
-		velint[i] = (int)( pml.velocity[i]*PM_VECTOR_SNAP );
-		pm->playerState->pmove.velocity[i] = velint[i]*( 1.0/PM_VECTOR_SNAP );
-	}
-
-	for( i = 0; i < 3; i++ )
-	{
-		if( pml.origin[i] >= 0 )
-			sign[i] = 1;
-		else
-			sign[i] = -1;
-		origint[i] = (int)( pml.origin[i]*PM_VECTOR_SNAP );
-		if( origint[i]*( 1.0/PM_VECTOR_SNAP ) == pml.origin[i] )
-			sign[i] = 0;
-	}
-	VectorCopy( origint, base );
-
-	// try all combinations
-	for( j = 0; j < 8; j++ )
-	{
-		bits = jitterbits[j];
-		VectorCopy( base, origint );
-		for( i = 0; i < 3; i++ )
-			if( bits & ( 1<<i ) )
-				origint[i] += sign[i];
-
-		if( PM_GoodPosition( origint ) )
-		{
-			VectorScale( origint, ( 1.0/PM_VECTOR_SNAP ), pm->playerState->pmove.origin );
-			return;
-		}
-	}
-
-	// go back to the last position
-	VectorCopy( pml.previous_origin, pm->playerState->pmove.origin );
-	VectorClear( pm->playerState->pmove.velocity );
-}
-
-
-/*
-* PM_InitialSnapPosition
-* 
-*/
-static void PM_InitialSnapPosition( void )
-{
-	int x, y, z;
-	int base[3];
-	static const int offset[3] = { 0, -1, 1 };
-	int origint[3];
-
-	VectorScale( pm->playerState->pmove.origin, PM_VECTOR_SNAP, origint );
-	VectorCopy( origint, base );
-
-	for( z = 0; z < 3; z++ )
-	{
-		origint[2] = base[2] + offset[z];
-		for( y = 0; y < 3; y++ )
-		{
-			origint[1] = base[1] + offset[y];
-			for( x = 0; x < 3; x++ )
-			{
-				origint[0] = base[0] + offset[x];
-				if( PM_GoodPosition( origint ) )
-				{
-					pml.origin[0] = pm->playerState->pmove.origin[0] = origint[0]*( 1.0/PM_VECTOR_SNAP );
-					pml.origin[1] = pm->playerState->pmove.origin[1] = origint[1]*( 1.0/PM_VECTOR_SNAP );
-					pml.origin[2] = pm->playerState->pmove.origin[2] = origint[2]*( 1.0/PM_VECTOR_SNAP );
-					VectorCopy( pm->playerState->pmove.origin, pml.previous_origin );
-					return;
-				}
-			}
-		}
-	}
+		pm->playerState->pmove.velocity[i] = ( (int)( pml.velocity[i]*PM_VECTOR_SNAP ) )*( 1.0/PM_VECTOR_SNAP );
 }
 
 static void PM_UpdateDeltaAngles( void )
@@ -1918,9 +1824,6 @@ void Pmove( pmove_t *pmove )
 		pm->playerState->pmove.stats[PM_STAT_FWDTIME] = PM_FORWARD_ACCEL_TIMEDELAY;
 	}
 
-	if( pm->snapinitial )
-		PM_InitialSnapPosition();
-
 	if( pm->playerState->pmove.pm_type != PM_NORMAL ) // includes dead, freeze, chasecam...
 	{
 		if( !GS_MatchPaused() )
@@ -1950,7 +1853,8 @@ void Pmove( pmove_t *pmove )
 			pml.upPush = 0;
 		}
 		
-		PM_SnapPosition();
+		PM_SnapVelocity();
+		VectorCopy( pml.origin, pm->playerState->pmove.origin );
 		return;
 	}
 
@@ -2034,7 +1938,8 @@ void Pmove( pmove_t *pmove )
 
 	// set groundentity, watertype, and waterlevel for final spot
 	PM_CategorizePosition();
-	PM_SnapPosition();
+	PM_SnapVelocity();
+	VectorCopy( pml.origin, pm->playerState->pmove.origin );
 
 	// falling event
 

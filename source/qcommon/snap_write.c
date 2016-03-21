@@ -321,11 +321,11 @@ static void SNAP_WritePlayerstateToClient( player_state_t *ops, player_state_t *
 		MSG_WriteByte( msg, ps->pmove.pm_type );
 
 	if( pflags & PS_M_ORIGIN0 )
-		MSG_WriteInt3( msg, (int)( ps->pmove.origin[0]*PM_VECTOR_SNAP ) );
+		MSG_WriteFloat( msg, ps->pmove.origin[0] );
 	if( pflags & PS_M_ORIGIN1 )
-		MSG_WriteInt3( msg, (int)( ps->pmove.origin[1]*PM_VECTOR_SNAP ) );
+		MSG_WriteFloat( msg, ps->pmove.origin[1]);
 	if( pflags & PS_M_ORIGIN2 )
-		MSG_WriteInt3( msg, (int)( ps->pmove.origin[2]*PM_VECTOR_SNAP ) );
+		MSG_WriteFloat( msg, ps->pmove.origin[2]);
 
 	if( pflags & PS_M_VELOCITY0 )
 		MSG_WriteInt3( msg, (int)( ps->pmove.velocity[0]*PM_VECTOR_SNAP ) );

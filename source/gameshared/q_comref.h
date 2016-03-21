@@ -493,7 +493,6 @@ typedef struct
 
 	// command (in)
 	usercmd_t cmd;
-	bool snapinitial;       // if s has been changed outside pmove
 
 	// results (out)
 	int numtouch;
