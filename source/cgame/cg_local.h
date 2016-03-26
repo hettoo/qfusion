@@ -532,6 +532,8 @@ typedef struct
 	unsigned int time;
 	float delay;
 
+	unsigned int monoTime;
+
 	unsigned int realTime;
 	float frameTime;
 	float realFrameTime;

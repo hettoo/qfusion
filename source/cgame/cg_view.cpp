@@ -1009,6 +1009,8 @@ void CG_RenderView( float frameTime, float realFrameTime, int realTime, unsigned
 	cg.frameTime = frameTime;
 	cg.realFrameTime = realFrameTime;
 	cg.frameCount++;
+	if( serverTime > cg.time )
+		cg.monoTime += serverTime - cg.time;
 	cg.time = serverTime;
 
 	if( !cgs.precacheDone || !cg.frame.valid )

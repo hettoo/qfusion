@@ -1163,7 +1163,7 @@ static void CG_DrawAwards( int x, int y, int align, struct qfontface_s *font, ve
 		if( current < 0 )
 			break;
 
-		if( cg.award_times[current % MAX_AWARD_LINES] + MAX_AWARD_DISPLAYTIME < cg.time )
+		if( cg.award_times[current % MAX_AWARD_LINES] + MAX_AWARD_DISPLAYTIME < cg.monoTime )
 			break;
 
 		if( !cg.award_lines[current % MAX_AWARD_LINES][0] )
@@ -1187,7 +1187,7 @@ static void CG_DrawAwards( int x, int y, int align, struct qfontface_s *font, ve
 		str = cg.award_lines[ current ];
 
 		yoffset = trap_SCR_FontHeight( font ) * ( MAX_AWARD_LINES - i );
-		moveTime = ( cg.time - cg.award_times[ current ] ) / 1000.0f;
+		moveTime = ( cg.monoTime - cg.award_times[ current ] ) / 1000.0f;
 
 		m_x = LinearMovementWithOvershoot( s_x, e_x, 
 			AWARDS_OVERSHOOT_DURATION, AWARDS_OVERSHOOT_FREQUENCY, AWARDS_OVERSHOOT_DECAY, 

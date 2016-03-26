@@ -33,10 +33,10 @@ void CG_InitChat( cg_gamechat_t *chat )
 */
 void CG_StackChatString( cg_gamechat_t *chat, const char *str )
 {
-	chat->messages[chat->nextMsg].time = cg.realTime;
+	chat->messages[chat->nextMsg].time = cg.monoTime;
 	Q_strncpyz( chat->messages[chat->nextMsg].text, str, sizeof( chat->messages[0].text ) );
 
-	chat->lastMsgTime = cg.realTime;
+	chat->lastMsgTime = cg.monoTime;
 	chat->nextMsg = (chat->nextMsg + 1) % GAMECHAT_STACK_SIZE;
 }
 
@@ -74,7 +74,7 @@ void CG_DrawChat( cg_gamechat_t *chat, int x, int y, char *fontName, struct qfon
 
 	font_height = trap_SCR_FontHeight( font );
 	message_mode = (int)trap_Cvar_Value( "con_messageMode" );
-	chat_active = ( chat->lastMsgTime + GAMECHAT_WAIT_IN_TIME + GAMECHAT_FADE_IN_TIME > cg.realTime || message_mode );
+	chat_active = ( chat->lastMsgTime + GAMECHAT_WAIT_IN_TIME + GAMECHAT_FADE_IN_TIME > cg.monoTime || message_mode );
 	lines = 0;
 	total_lines = /*!message_mode ? 0 : */1;
 
@@ -92,14 +92,14 @@ void CG_DrawChat( cg_gamechat_t *chat, int x, int y, char *fontName, struct qfon
 	if( chat_active != chat->lastActive )
 	{
 		// smooth fade ins and fade outs
-		chat->lastActiveChangeTime = cg.realTime - (1.0 - chat->activeFrac) * (wait_time + fade_time);
+		chat->lastActiveChangeTime = cg.monoTime - (1.0 - chat->activeFrac) * (wait_time + fade_time);
 	}
 
-	if( cg.realTime >= chat->lastActiveChangeTime + wait_time )
+	if( cg.monoTime >= chat->lastActiveChangeTime + wait_time )
 	{
 		int time_diff, time_interval;
 
-		time_diff = cg.realTime - (chat->lastActiveChangeTime + wait_time);
+		time_diff = cg.monoTime - (chat->lastActiveChangeTime + wait_time);
 		time_interval = fade_time;
 
 		if( time_diff <= time_interval )
@@ -127,7 +127,7 @@ void CG_DrawChat( cg_gamechat_t *chat, int x, int y, char *fontName, struct qfon
 
 		msg = &chat->messages[l];
 		text = msg->text;
-		old_msg = !message_mode && ( cg.realTime > msg->time + GAMECHAT_NOTIFY_TIME );
+		old_msg = !message_mode && ( cg.monoTime > msg->time + GAMECHAT_NOTIFY_TIME );
 
 		if( !background_drawn && backColor[3] )
 		{
@@ -135,7 +135,7 @@ void CG_DrawChat( cg_gamechat_t *chat, int x, int y, char *fontName, struct qfon
 			{
 				// keep the box being drawn for a while to prevent it from flickering
 				// upon arrival of the possibly entered chat message
-				if( !(!chat_active && cg.realTime <= chat->lastActiveChangeTime + 200) )
+				if( !(!chat_active && cg.monoTime <= chat->lastActiveChangeTime + 200) )
 					break;
 			}
 
