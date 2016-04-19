@@ -29,7 +29,10 @@ static char buf[524288];
 static int bi;
 static int command;
 static float args[6];
+
 static float angles[2];
+static int moves[3];
+static int buttons;
 
 static void G_ScriptRun_SetAngle( int n, float angle )
 {
@@ -41,13 +44,6 @@ static void G_ScriptRun_Terminate_f()
 	trap_Cvar_ForceSet( "g_scriptRun", "0" );
 }
 
-static void G_ScriptRun_Angles_f()
-{
-	angles[0] = args[0];
-	angles[1] = args[1];
-	command = 0;
-}
-
 static void G_ScriptRun_Wait_f()
 {
 	if( args[0] )
@@ -56,10 +52,64 @@ static void G_ScriptRun_Wait_f()
 		command = 0;
 }
 
+static void G_ScriptRun_Angles_f()
+{
+	angles[0] = args[0];
+	angles[1] = args[1];
+	command = 0;
+}
+
+static void G_ScriptRun_Forward_f()
+{
+	moves[0] = ( int )( args[0] );
+	command = 0;
+}
+
+static void G_ScriptRun_Up_f()
+{
+	moves[1] = ( int )( args[0] );
+	command = 0;
+}
+
+static void G_ScriptRun_Side_f()
+{
+	moves[2] = ( int )( args[0] );
+	command = 0;
+}
+
+static void G_ScriptRun_Button_f()
+{
+	buttons |= ( int )( args[0] );
+	command = 0;
+}
+
+static void G_ScriptRun_UnButton_f()
+{
+	buttons &= ~( int )( args[0] );
+	command = 0;
+}
+
 static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Terminate_f,
+	G_ScriptRun_Wait_f,
 	G_ScriptRun_Angles_f,
-	G_ScriptRun_Wait_f
+	G_ScriptRun_Forward_f,
+	G_ScriptRun_Up_f,
+	G_ScriptRun_Side_f,
+	G_ScriptRun_Button_f,
+	G_ScriptRun_UnButton_f
+};
+
+static const char *names[] = {
+	"terminate",
+	"wait",
+	"angles",
+	"forward",
+	"up",
+	"side",
+	"button",
+	"unbutton",
+	NULL
 };
 
 int G_ScriptRun_LoadCommand( void )
@@ -69,6 +119,10 @@ int G_ScriptRun_LoadCommand( void )
 
 	if( !running || g_scriptRun->integer < 0 )
 	{
+		memset( angles, 0, sizeof( angles ) );
+		memset( moves, 0, sizeof( moves ) );
+		buttons = 0;
+
 		int filenum;
 		int length = trap_FS_FOpenFile( va( "scriptruns/%s", level.mapname ), &filenum, FS_READ );
 		if( length == -1 )
@@ -79,7 +133,6 @@ int G_ScriptRun_LoadCommand( void )
 		if( g_scriptRun->integer < 0 )
 			trap_Cvar_ForceSet( "g_scriptRun", "1" );
 		running = true;
-		memset( angles, 0, sizeof( angles ) );
 	}
 
 	if( !buf[bi] )
@@ -93,7 +146,19 @@ int G_ScriptRun_LoadCommand( void )
 		next++;
 
 	const char *p = &buf[bi];
-	command = atoi( COM_Parse( &p ) );
+	const char *s = COM_Parse( &p );
+	command = atoi( s );
+	if( !command )
+	{
+		for( int i = 0; names[i]; i++ )
+		{
+			if( !strcmp( names[i], s ) )
+			{
+				command = i;
+				break;
+			}
+		}
+	}
 	memset( args, 0, sizeof( args ) );
 	for( int i = 0; i < 6; i++ )
 	{
@@ -128,6 +193,10 @@ void G_ScriptRun( edict_t *new_ent )
 
 	G_ScriptRun_SetAngle( 0, angles[0] );
 	G_ScriptRun_SetAngle( 1, angles[1] );
+	ucmd.buttons = buttons;
+	ucmd.forwardmove = moves[0];
+	ucmd.upmove = moves[1];
+	ucmd.sidemove = moves[2];
 
 	ClientThink( ent, &ucmd, 0 );
 }
