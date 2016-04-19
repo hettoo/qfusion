@@ -378,6 +378,8 @@ extern cvar_t *g_asGC_interval;
 
 extern cvar_t *g_skillRating;
 
+extern cvar_t *g_scriptRun;
+
 edict_t **G_Teams_ChallengersQueue( void );
 void G_Teams_Join_Cmd( edict_t *ent );
 bool G_Teams_JoinTeam( edict_t *ent, int team );
@@ -417,6 +419,11 @@ bool G_Gametype_CanDropItem( const gsitem_t *item, bool ignoreMatchState );
 bool G_Gametype_CanTeamDamage( int damageflags );
 int G_Gametype_RespawnTimeForItem( const gsitem_t *item );
 int G_Gametype_DroppedItemTimeout( const gsitem_t *item );
+
+//
+// g_scriptrun.c
+//
+void G_ScriptRun( edict_t *ent );
 
 //
 // g_spawnpoints.c

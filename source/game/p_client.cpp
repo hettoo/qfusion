@@ -1828,7 +1828,10 @@ void G_ClientThink( edict_t *ent )
 			AI_Think( ent );
 	}
 
-	trap_ExecuteClientThinks( PLAYERNUM( ent ) );
+	if( g_scriptRun->integer )
+		G_ScriptRun( ent );
+	else
+		trap_ExecuteClientThinks( PLAYERNUM( ent ) );
 }
 
 /*

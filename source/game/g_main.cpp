@@ -354,6 +354,8 @@ void G_Init( unsigned int seed, unsigned int framemsec, int protocol, const char
 	g_skillRating = trap_Cvar_Get( "sv_skillRating", va("%.0f", MM_RATING_DEFAULT), CVAR_SERVERINFO|CVAR_READONLY );
 	// trap_Cvar_ForceSet( "sv_skillRating", va("%d", MM_RATING_DEFAULT) );
 
+	g_scriptRun = trap_Cvar_Get( "g_scriptRun", "0", CVAR_ARCHIVE );
+
 	// nextmap
 	trap_Cvar_ForceSet( "nextmap", "match \"advance\"" );
 
