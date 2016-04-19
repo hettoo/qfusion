@@ -22,37 +22,68 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 cvar_t *g_scriptRun;
 
+static edict_t *ent;
 static usercmd_t ucmd;
 static bool running = false;
 static char buf[524288];
 static int bi;
 static int command;
 static float args[6];
+static float angles[2];
+
+static void G_ScriptRun_SetAngle( int n, float angle )
+{
+	ucmd.angles[n] = ANGLE2SHORT( angle ) - ent->r.client->ps.pmove.delta_angles[n];
+}
+
+static void G_ScriptRun_Terminate_f()
+{
+	trap_Cvar_ForceSet( "g_scriptRun", "0" );
+}
+
+static void G_ScriptRun_Angles_f()
+{
+	angles[0] = args[0];
+	angles[1] = args[1];
+	command = 0;
+}
+
+static void G_ScriptRun_Wait_f()
+{
+	if( args[0] )
+		args[0]--;
+	else
+		command = 0;
+}
 
 static void ( *scriptFunctions[] )( void ) = {
-	NULL
+	G_ScriptRun_Terminate_f,
+	G_ScriptRun_Angles_f,
+	G_ScriptRun_Wait_f
 };
 
-void G_ScriptRun_LoadCommand( void )
+int G_ScriptRun_LoadCommand( void )
 {
 	if( command && g_scriptRun->integer > 0 )
-		return;
+		return command;
 
 	if( !running || g_scriptRun->integer < 0 )
 	{
 		int filenum;
 		int length = trap_FS_FOpenFile( va( "scriptruns/%s", level.mapname ), &filenum, FS_READ );
 		if( length == -1 )
-			return;
+			return 0;
 		trap_FS_Read( buf, length, filenum );
 		trap_FS_FCloseFile( filenum );
 		bi = 0;
 		if( g_scriptRun->integer < 0 )
 			trap_Cvar_ForceSet( "g_scriptRun", "1" );
+		running = true;
+		memset( angles, 0, sizeof( angles ) );
 	}
 
 	if( !buf[bi] )
-		return;
+		return 0;
 
 	int next = bi;
 	while( buf[next] && buf[next] != '\n' && buf[next] != '\r' )
@@ -63,38 +94,40 @@ void G_ScriptRun_LoadCommand( void )
 
 	const char *p = &buf[bi];
 	command = atoi( COM_Parse( &p ) );
+	memset( args, 0, sizeof( args ) );
 	for( int i = 0; i < 6; i++ )
 	{
 		char *q = COM_Parse( &p );
 		if( q )
-		{
 			args[i] = atof( q );
-		}
 		else
-		{
-			args[i] = 0;
 			break;
-		}
 	}
 	bi = next;
+
+	return command;
 }
 
-void G_ScriptRun( edict_t *ent )
+void G_ScriptRun( edict_t *new_ent )
 {
+	ent = new_ent;
 	memset( &ucmd, 0, sizeof( ucmd ) );
-
-	bool repeat = true;
-	while( repeat )
-	{
-		if( !command )
-			repeat = false;
-		G_ScriptRun_LoadCommand();
-		if( command )
-			scriptFunctions[command]();
-		repeat &= command == 0;
-	}
-
 	ucmd.msec = game.frametime;
 	ucmd.serverTimeStamp = game.serverTime;
+
+	bool repeat;
+	do
+	{
+		command = G_ScriptRun_LoadCommand();
+		running = command != 0;
+		repeat = running;
+		scriptFunctions[command]();
+		repeat &= command == 0;
+	}
+	while( repeat );
+
+	G_ScriptRun_SetAngle( 0, angles[0] );
+	G_ScriptRun_SetAngle( 1, angles[1] );
+
 	ClientThink( ent, &ucmd, 0 );
 }
