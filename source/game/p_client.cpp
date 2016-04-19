@@ -1828,7 +1828,7 @@ void G_ClientThink( edict_t *ent )
 			AI_Think( ent );
 	}
 
-	if( g_scriptRun->integer )
+	if( ent->s.team != TEAM_SPECTATOR && g_scriptRun->integer )
 		G_ScriptRun( ent );
 	else
 		trap_ExecuteClientThinks( PLAYERNUM( ent ) );

@@ -29,14 +29,58 @@ static char buf[524288];
 static int bi;
 static int command;
 static float args[6];
+static int iargs[6];
 
 static float angles[2];
 static int moves[3];
 static int buttons;
+static int strafe;
+static float strafeOffset;
 
 static void G_ScriptRun_SetAngle( int n, float angle )
 {
+	while( angle > 180 )
+		angle -= 360.0f;
+	while( angle < -180 )
+		angle += 360.0f;
 	ucmd.angles[n] = ANGLE2SHORT( angle ) - ent->r.client->ps.pmove.delta_angles[n];
+}
+
+static float G_ScriptRun_HSpeed()
+{
+	vec3_t hvel;
+	VectorCopy( ent->r.client->ps.pmove.velocity, hvel );
+	hvel[2] = 0;
+	return VectorLength( hvel );
+}
+
+
+static float G_ScriptRun_MoveAngle()
+{
+	vec3_t hvel;
+	vec3_t an;
+	VectorCopy( ent->r.client->ps.pmove.velocity, hvel );
+	hvel[2] = 0;
+	VecToAngles( hvel, an );
+	return an[YAW];
+}
+
+static float G_ScriptRun_BestAccelAngle( float offset )
+{
+	float result = acos( ( 320.0f - 320.0f * ucmd.msec ) / G_ScriptRun_HSpeed() ) * 180.0f / M_PI - offset;
+	if( result > 0 )
+		return result;
+	return 0;
+}
+
+static float G_ScriptRun_StrafeAngle()
+{
+	return G_ScriptRun_BestAccelAngle( 45 );
+}
+
+static float G_ScriptRun_BunnyAngle()
+{
+	return G_ScriptRun_BestAccelAngle( 90 );
 }
 
 static void G_ScriptRun_Terminate_f()
@@ -46,8 +90,8 @@ static void G_ScriptRun_Terminate_f()
 
 static void G_ScriptRun_Wait_f()
 {
-	if( args[0] )
-		args[0]--;
+	if( iargs[0] )
+		iargs[0]--;
 	else
 		command = 0;
 }
@@ -61,31 +105,38 @@ static void G_ScriptRun_Angles_f()
 
 static void G_ScriptRun_Forward_f()
 {
-	moves[0] = ( int )( args[0] );
+	moves[0] = iargs[0];
 	command = 0;
 }
 
 static void G_ScriptRun_Up_f()
 {
-	moves[1] = ( int )( args[0] );
+	moves[1] = iargs[0];
 	command = 0;
 }
 
 static void G_ScriptRun_Side_f()
 {
-	moves[2] = ( int )( args[0] );
+	moves[2] = iargs[0];
 	command = 0;
 }
 
 static void G_ScriptRun_Button_f()
 {
-	buttons |= ( int )( args[0] );
+	buttons |= iargs[0];
 	command = 0;
 }
 
 static void G_ScriptRun_UnButton_f()
 {
-	buttons &= ~( int )( args[0] );
+	buttons &= ~iargs[0];
+	command = 0;
+}
+
+static void G_ScriptRun_Strafe_f()
+{
+	strafe = iargs[0];
+	strafeOffset = args[1];
 	command = 0;
 }
 
@@ -97,7 +148,8 @@ static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Up_f,
 	G_ScriptRun_Side_f,
 	G_ScriptRun_Button_f,
-	G_ScriptRun_UnButton_f
+	G_ScriptRun_UnButton_f,
+	G_ScriptRun_Strafe_f,
 };
 
 static const char *names[] = {
@@ -109,6 +161,7 @@ static const char *names[] = {
 	"side",
 	"button",
 	"unbutton",
+	"strafe",
 	NULL
 };
 
@@ -122,6 +175,8 @@ int G_ScriptRun_LoadCommand( void )
 		memset( angles, 0, sizeof( angles ) );
 		memset( moves, 0, sizeof( moves ) );
 		buttons = 0;
+		strafe = 0;
+		strafeOffset = 0;
 
 		int filenum;
 		int length = trap_FS_FOpenFile( va( "scriptruns/%s", level.mapname ), &filenum, FS_READ );
@@ -160,17 +215,46 @@ int G_ScriptRun_LoadCommand( void )
 		}
 	}
 	memset( args, 0, sizeof( args ) );
+	memset( iargs, 0, sizeof( iargs ) );
 	for( int i = 0; i < 6; i++ )
 	{
 		char *q = COM_Parse( &p );
 		if( q )
+		{
 			args[i] = atof( q );
+			iargs[i] = atoi( q );
+		}
 		else
+		{
 			break;
+		}
 	}
 	bi = next;
 
 	return command;
+}
+
+bool G_ScriptRun_Strafe( void )
+{
+	if( strafe && moves[2] && G_ScriptRun_HSpeed() >= 320 )
+		G_ScriptRun_SetAngle( YAW, G_ScriptRun_MoveAngle()
+				+ ( ( moves[0] == 0 ? G_ScriptRun_BunnyAngle() : G_ScriptRun_StrafeAngle() ) + 0.3f + strafeOffset )
+					* ( ( moves[2] < 0 ) ^ ( moves[0] < 0 ) ? 1 : -1 )
+				+ ( moves[0] < 0 ? 180 : 0 ) );
+	else
+		return false;
+	return true;
+}
+
+void G_ScriptRun_Apply( void )
+{
+	G_ScriptRun_SetAngle( 0, angles[0] );
+	if( !G_ScriptRun_Strafe() )
+		G_ScriptRun_SetAngle( 1, angles[1] );
+	ucmd.buttons = buttons;
+	ucmd.forwardmove = moves[0];
+	ucmd.upmove = moves[1];
+	ucmd.sidemove = moves[2];
 }
 
 void G_ScriptRun( edict_t *new_ent )
@@ -191,12 +275,7 @@ void G_ScriptRun( edict_t *new_ent )
 	}
 	while( repeat );
 
-	G_ScriptRun_SetAngle( 0, angles[0] );
-	G_ScriptRun_SetAngle( 1, angles[1] );
-	ucmd.buttons = buttons;
-	ucmd.forwardmove = moves[0];
-	ucmd.upmove = moves[1];
-	ucmd.sidemove = moves[2];
+	G_ScriptRun_Apply();
 
 	ClientThink( ent, &ucmd, 0 );
 }
