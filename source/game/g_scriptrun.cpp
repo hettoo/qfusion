@@ -133,9 +133,13 @@ static void G_ScriptRun_UnButton_f()
 	command = 0;
 }
 
-static void G_ScriptRun_Weapon_f()
+static void G_ScriptRun_Use_f()
 {
-	ent->r.client->ps.stats[STAT_PENDING_WEAPON] = iargs[0];
+	gsitem_t *it;
+
+	it = GS_Cmd_UseItem( &ent->r.client->ps, va( "%d", iargs[0] ), 0 );
+	if( it )
+		G_UseItem( ent, it );
 	command = 0;
 }
 
@@ -155,7 +159,7 @@ static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Side_f,
 	G_ScriptRun_Button_f,
 	G_ScriptRun_UnButton_f,
-	G_ScriptRun_Weapon_f,
+	G_ScriptRun_Use_f,
 	G_ScriptRun_Strafe_f
 };
 
@@ -168,7 +172,7 @@ static const char *names[] = {
 	"side",
 	"button",
 	"unbutton",
-	"weapon",
+	"use",
 	"strafe",
 	NULL
 };
