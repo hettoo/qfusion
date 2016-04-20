@@ -108,6 +108,17 @@ static void G_ScriptRun_WaitFrame_f()
         Com_Printf( "frametime %u\n", ucmd.msec );
 }
 
+static void G_ScriptRun_Print_f()
+{
+    if( command.iargs[0] == 0 )
+        Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
+    else if( command.iargs[0] == 1 )
+        Com_Printf( "angles %f %f\n", ent->r.client->ps.viewangles[0], ent->r.client->ps.viewangles[1] );
+    else if( command.iargs[0] == 2 )
+        Com_Printf( "velocity %f %f %f\n", ent->r.client->ps.pmove.velocity[0], ent->r.client->ps.pmove.velocity[1], ent->r.client->ps.pmove.velocity[2] );
+    command.id = 0;
+}
+
 static void G_ScriptRun_Angles_f()
 {
 	angles[0] = command.args[0];
@@ -166,6 +177,7 @@ static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Terminate_f,
 	G_ScriptRun_Wait_f,
 	G_ScriptRun_WaitFrame_f,
+	G_ScriptRun_Print_f,
 	G_ScriptRun_Angles_f,
 	G_ScriptRun_Forward_f,
 	G_ScriptRun_Up_f,
@@ -180,6 +192,7 @@ static const char *names[] = {
 	"terminate",
 	"wait",
 	"waitframe",
+	"print",
 	"angles",
 	"forward",
 	"up",
