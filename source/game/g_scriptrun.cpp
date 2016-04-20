@@ -23,17 +23,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 cvar_t *g_scriptRun;
 
 typedef struct {
-    int id;
-    float args[6];
-    int iargs[6];
+	int id;
+	float args[6];
+	int iargs[6];
 } scriptcmd_t;
 
 static edict_t *ent;
 static usercmd_t ucmd;
+
 static bool running = false;
 static char buf[524288];
 static int bi;
 static scriptcmd_t command;
+static int record;
+static int replay;
+static scriptcmd_t recordings[4096];
 
 static float angles[2];
 static int moves[3];
@@ -102,21 +106,39 @@ static void G_ScriptRun_Wait_f()
 
 static void G_ScriptRun_WaitFrame_f()
 {
-    if( command.iargs[0] == ucmd.msec )
+	if( command.iargs[0] == ucmd.msec )
 		command.id = 0;
-    else
-        Com_Printf( "frametime %u\n", ucmd.msec );
+	else
+		Com_Printf( "frametime %u\n", ucmd.msec );
 }
 
 static void G_ScriptRun_Print_f()
 {
-    if( command.iargs[0] == 0 )
-        Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
-    else if( command.iargs[0] == 1 )
-        Com_Printf( "angles %f %f\n", ent->r.client->ps.viewangles[0], ent->r.client->ps.viewangles[1] );
-    else if( command.iargs[0] == 2 )
-        Com_Printf( "velocity %f %f %f\n", ent->r.client->ps.pmove.velocity[0], ent->r.client->ps.pmove.velocity[1], ent->r.client->ps.pmove.velocity[2] );
-    command.id = 0;
+	if( command.iargs[0] == 0 )
+		Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
+	else if( command.iargs[0] == 1 )
+		Com_Printf( "angles %f %f\n", ent->r.client->ps.viewangles[0], ent->r.client->ps.viewangles[1] );
+	else if( command.iargs[0] == 2 )
+		Com_Printf( "velocity %f %f %f\n", ent->r.client->ps.pmove.velocity[0], ent->r.client->ps.pmove.velocity[1], ent->r.client->ps.pmove.velocity[2] );
+	command.id = 0;
+}
+
+static void G_ScriptRun_Record_f()
+{
+	record = command.iargs[0] + 1;
+	command.id = 0;
+}
+
+static void G_ScriptRun_Stop_f()
+{
+	replay = 0;
+	command.id = 0;
+}
+
+static void G_ScriptRun_Replay_f()
+{
+	replay = command.iargs[0] + 1;
+	command.id = 0;
 }
 
 static void G_ScriptRun_Angles_f()
@@ -178,6 +200,9 @@ static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Wait_f,
 	G_ScriptRun_WaitFrame_f,
 	G_ScriptRun_Print_f,
+	G_ScriptRun_Record_f,
+	G_ScriptRun_Stop_f,
+	G_ScriptRun_Replay_f,
 	G_ScriptRun_Angles_f,
 	G_ScriptRun_Forward_f,
 	G_ScriptRun_Up_f,
@@ -193,6 +218,9 @@ static const char *names[] = {
 	"wait",
 	"waitframe",
 	"print",
+	"record",
+	"stop",
+	"replay",
 	"angles",
 	"forward",
 	"up",
@@ -204,7 +232,7 @@ static const char *names[] = {
 	NULL
 };
 
-int G_ScriptRun_LoadCommand( void )
+static int G_ScriptRun_LoadCommand( void )
 {
 	if( command.id && g_scriptRun->integer > 0 )
 		return command.id;
@@ -227,6 +255,15 @@ int G_ScriptRun_LoadCommand( void )
 		if( g_scriptRun->integer < 0 )
 			trap_Cvar_ForceSet( "g_scriptRun", "1" );
 		running = true;
+		record = 0;
+		replay = 0;
+		memset( recordings, 0, sizeof( recordings ) );
+	}
+
+	if( replay )
+	{
+		memcpy( &command, &recordings[replay++ - 1], sizeof( command ) );
+		return command.id;
 	}
 
 	if( !buf[bi] )
@@ -241,7 +278,7 @@ int G_ScriptRun_LoadCommand( void )
 
 	const char *p = &buf[bi];
 	const char *s = COM_Parse( &p );
-    memset( &command, 0, sizeof( command ) );
+	memset( &command, 0, sizeof( command ) );
 	command.id = atoi( s );
 	if( !command.id )
 	{
@@ -272,7 +309,7 @@ int G_ScriptRun_LoadCommand( void )
 	return command.id;
 }
 
-bool G_ScriptRun_Strafe( void )
+static bool G_ScriptRun_Strafe( void )
 {
 	if( strafe && moves[2] && G_ScriptRun_HSpeed() >= 320 )
 		G_ScriptRun_SetAngle( YAW, G_ScriptRun_MoveAngle()
@@ -284,7 +321,7 @@ bool G_ScriptRun_Strafe( void )
 	return true;
 }
 
-void G_ScriptRun_Apply( void )
+static void G_ScriptRun_Apply( void )
 {
 	G_ScriptRun_SetAngle( 0, angles[0] );
 	if( !G_ScriptRun_Strafe() )
@@ -293,6 +330,14 @@ void G_ScriptRun_Apply( void )
 	ucmd.forwardmove = moves[0];
 	ucmd.upmove = moves[1];
 	ucmd.sidemove = moves[2];
+}
+
+static void G_ScriptRun_Record( void )
+{
+	memcpy( &recordings[record++ - 1], &command, sizeof( command ) );
+	if( command.id == 5 )
+		record = 0;
+	command.id = 0;
 }
 
 void G_ScriptRun( edict_t *new_ent )
@@ -308,7 +353,10 @@ void G_ScriptRun( edict_t *new_ent )
 		command.id = G_ScriptRun_LoadCommand();
 		running = command.id != 0;
 		repeat = running;
-		scriptFunctions[command.id]();
+		if( record )
+			G_ScriptRun_Record();
+		else
+			scriptFunctions[command.id]();
 		repeat &= command.id == 0;
 	}
 	while( repeat );
