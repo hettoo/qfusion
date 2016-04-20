@@ -131,8 +131,31 @@ static void G_ScriptRun_WaitAttr_f()
 		case 5:
 			ref = ent->r.client->ps.pmove.origin[command.iargs[0] - 3];
 			break;
+		case 6:
+		case 7:
+		case 8:
+			vec3_t end;
+			VectorCopy( ent->r.client->ps.pmove.velocity, end );
+			if( command.iargs[0] == 6 )
+			{
+				end[2] = 0;
+			}
+			else if( command.iargs[0] == 7 )
+			{
+				end[0] = end[1] = 0;
+			}
+			float l = VectorNormalize( end );
+			if( l != 0 )
+			{
+				VectorMA( ent->r.client->ps.pmove.origin, command.args[2] + 1, end, end );
+				trace_t trace;
+				G_Trace( &trace, ent->r.client->ps.pmove.origin, ent->r.mins, ent->r.maxs, end, ent, MASK_PLAYERSOLID );
+				if( !trace.allsolid )
+					ref = trace.fraction * ( command.args[2] + 1 );
+			}
+			break;
 	}
-	if( ( command.iargs[1] < 0 && ref < command.args[2] ) || ( command.iargs[1] < 0 && ref < command.args[2] ) )
+	if( ( command.iargs[1] < 0 && ref < command.args[2] ) || ( command.iargs[1] > 0 && ref > command.args[2] ) )
 		command.id = 0;
 }
 
