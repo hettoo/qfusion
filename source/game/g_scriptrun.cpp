@@ -116,6 +116,26 @@ static void G_ScriptRun_WaitFrame_f()
 		Com_Printf( "frametime %u\n", ucmd.msec );
 }
 
+static void G_ScriptRun_WaitAttr_f()
+{
+	float ref = 0;
+	switch( command.iargs[0] )
+	{
+		case 0:
+		case 1:
+		case 2:
+			ref = ent->r.client->ps.pmove.velocity[command.iargs[0]];
+			break;
+		case 3:
+		case 4:
+		case 5:
+			ref = ent->r.client->ps.pmove.origin[command.iargs[0] - 3];
+			break;
+	}
+	if( ( command.iargs[1] < 0 && ref < command.args[2] ) || ( command.iargs[1] < 0 && ref < command.args[2] ) )
+		command.id = 0;
+}
+
 static void G_ScriptRun_Print_f()
 {
 	Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
@@ -213,6 +233,7 @@ static struct scriptfunction_s {
 	{ "nop", G_ScriptRun_Nop_f },
 	{ "wait", G_ScriptRun_Wait_f },
 	{ "waitframe", G_ScriptRun_WaitFrame_f },
+	{ "waitattr", G_ScriptRun_WaitAttr_f },
 	{ "print", G_ScriptRun_Print_f },
 	{ "record", G_ScriptRun_Record_f },
 	{ "stop", G_ScriptRun_Stop_f },
