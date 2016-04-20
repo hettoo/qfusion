@@ -62,7 +62,6 @@ static float G_ScriptRun_HSpeed()
 	return VectorLength( hvel );
 }
 
-
 static float G_ScriptRun_MoveAngle()
 {
 	vec3_t hvel;
@@ -153,22 +152,29 @@ static void G_ScriptRun_Angles_f()
 	command.id = 0;
 }
 
+static void G_ScriptRun_Move_f( int n )
+{
+	moves[n] = command.iargs[0];
+	if( moves[n] < -1 )
+		moves[n] = -1;
+	else if( moves[n] > 1 )
+		moves[n] = 1;
+	command.id = 0;
+}
+
 static void G_ScriptRun_Forward_f()
 {
-	moves[0] = command.iargs[0];
-	command.id = 0;
+	G_ScriptRun_Move_f( 0 );
 }
 
 static void G_ScriptRun_Up_f()
 {
-	moves[1] = command.iargs[0];
-	command.id = 0;
+	G_ScriptRun_Move_f( 1 );
 }
 
 static void G_ScriptRun_Side_f()
 {
-	moves[2] = command.iargs[0];
-	command.id = 0;
+	G_ScriptRun_Move_f( 2 );
 }
 
 static void G_ScriptRun_Button_f()
