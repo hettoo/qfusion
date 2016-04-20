@@ -118,12 +118,9 @@ static void G_ScriptRun_WaitFrame_f()
 
 static void G_ScriptRun_Print_f()
 {
-	if( command.iargs[0] == 0 )
-		Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
-	else if( command.iargs[0] == 1 )
-		Com_Printf( "angles %f %f\n", ent->r.client->ps.viewangles[0], ent->r.client->ps.viewangles[1] );
-	else if( command.iargs[0] == 2 )
-		Com_Printf( "velocity %f %f %f\n", ent->r.client->ps.pmove.velocity[0], ent->r.client->ps.pmove.velocity[1], ent->r.client->ps.pmove.velocity[2] );
+	Com_Printf( "origin %f %f %f\n", ent->r.client->ps.pmove.origin[0], ent->r.client->ps.pmove.origin[1], ent->r.client->ps.pmove.origin[2] );
+	Com_Printf( "angles %f %f\n", ent->r.client->ps.viewangles[0], ent->r.client->ps.viewangles[1] );
+	Com_Printf( "velocity %f %f %f\n", ent->r.client->ps.pmove.velocity[0], ent->r.client->ps.pmove.velocity[1], ent->r.client->ps.pmove.velocity[2] );
 	command.id = 0;
 }
 
