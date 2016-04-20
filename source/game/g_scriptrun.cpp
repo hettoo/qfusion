@@ -195,42 +195,37 @@ static void G_ScriptRun_Strafe_f()
 	command.id = 0;
 }
 
-static void ( *scriptFunctions[] )( void ) = {
-	G_ScriptRun_Terminate_f,
-	G_ScriptRun_Wait_f,
-	G_ScriptRun_WaitFrame_f,
-	G_ScriptRun_Print_f,
-	G_ScriptRun_Record_f,
-	G_ScriptRun_Stop_f,
-	G_ScriptRun_Replay_f,
-	G_ScriptRun_Angles_f,
-	G_ScriptRun_Forward_f,
-	G_ScriptRun_Up_f,
-	G_ScriptRun_Side_f,
-	G_ScriptRun_Button_f,
-	G_ScriptRun_UnButton_f,
-	G_ScriptRun_Use_f,
-	G_ScriptRun_Strafe_f
+static struct scriptfunction_s {
+	const char *name;
+	void ( *f )( void );
+} scriptFunctions[] = {
+	{ "terminate", G_ScriptRun_Terminate_f },
+	{ "wait", G_ScriptRun_Wait_f },
+	{ "waitframe", G_ScriptRun_WaitFrame_f },
+	{ "print", G_ScriptRun_Print_f },
+	{ "record", G_ScriptRun_Record_f },
+	{ "stop", G_ScriptRun_Stop_f },
+	{ "replay", G_ScriptRun_Replay_f },
+	{ "angles", G_ScriptRun_Angles_f },
+	{ "forward", G_ScriptRun_Forward_f },
+	{ "up", G_ScriptRun_Up_f },
+	{ "side", G_ScriptRun_Side_f },
+	{ "button", G_ScriptRun_Button_f },
+	{ "unbutton", G_ScriptRun_UnButton_f },
+	{ "use", G_ScriptRun_Use_f },
+	{ "strafe", G_ScriptRun_Strafe_f },
+	{ NULL, NULL }
 };
 
-static const char *names[] = {
-	"terminate",
-	"wait",
-	"waitframe",
-	"print",
-	"record",
-	"stop",
-	"replay",
-	"angles",
-	"forward",
-	"up",
-	"side",
-	"button",
-	"unbutton",
-	"use",
-	"strafe",
-	NULL
-};
+static int G_ScriptRun_FindCommand( const char *name )
+{
+	for( int i = 0; scriptFunctions[i].name; i++ )
+	{
+		if( !strcmp( scriptFunctions[i].name, name ) )
+			return i;
+	}
+	return 0;
+}
 
 static int G_ScriptRun_LoadCommand( void )
 {
@@ -281,16 +276,7 @@ static int G_ScriptRun_LoadCommand( void )
 	memset( &command, 0, sizeof( command ) );
 	command.id = atoi( s );
 	if( !command.id )
-	{
-		for( int i = 0; names[i]; i++ )
-		{
-			if( !strcmp( names[i], s ) )
-			{
-				command.id = i;
-				break;
-			}
-		}
-	}
+		command.id = G_ScriptRun_FindCommand( s );
 	for( int i = 0; i < 6; i++ )
 	{
 		char *q = COM_Parse( &p );
@@ -335,7 +321,7 @@ static void G_ScriptRun_Apply( void )
 static void G_ScriptRun_Record( void )
 {
 	memcpy( &recordings[record++ - 1], &command, sizeof( command ) );
-	if( command.id == 5 )
+	if( command.id == G_ScriptRun_FindCommand( "stop" ) )
 		record = 0;
 	command.id = 0;
 }
@@ -356,7 +342,7 @@ void G_ScriptRun( edict_t *new_ent )
 		if( record )
 			G_ScriptRun_Record();
 		else
-			scriptFunctions[command.id]();
+			scriptFunctions[command.id].f();
 		repeat &= command.id == 0;
 	}
 	while( repeat );
