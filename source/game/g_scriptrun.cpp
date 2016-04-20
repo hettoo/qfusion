@@ -75,7 +75,7 @@ static float G_ScriptRun_MoveAngle()
 
 static float G_ScriptRun_BestAccelAngle( float offset )
 {
-	float result = acos( ( 320.0f - 0.320f * ucmd.msec ) / G_ScriptRun_HSpeed() ) * 180.0f / M_PI - offset;
+	float result = acos( ent->r.client->ps.pmove.stats[PM_STAT_MAXSPEED] * ( 1 - 0.001f * ucmd.msec ) / G_ScriptRun_HSpeed() ) * 180.0f / M_PI - offset;
 	if( result > 0 )
 		return result;
 	return 0;
@@ -311,7 +311,7 @@ static int G_ScriptRun_LoadCommand( void )
 
 static bool G_ScriptRun_Strafe( void )
 {
-	if( strafe && moves[2] && G_ScriptRun_HSpeed() >= 320 )
+	if( strafe && moves[2] && G_ScriptRun_HSpeed() >= ent->r.client->ps.pmove.stats[PM_STAT_MAXSPEED] )
 		G_ScriptRun_SetAngle( YAW, G_ScriptRun_MoveAngle()
 				+ ( ( moves[0] == 0 ? G_ScriptRun_BunnyAngle() : G_ScriptRun_StrafeAngle() ) + strafeOffset )
 					* ( ( moves[2] < 0 ) ^ ( moves[0] < 0 ) ? 1 : -1 )
