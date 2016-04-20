@@ -330,7 +330,7 @@ static int G_ScriptRun_LoadCommand( void )
 	const char *s = COM_Parse( &p );
 	memset( &command, 0, sizeof( command ) );
 	command.id = atoi( s );
-	if( !command.id && !( command.id = G_ScriptRun_FindCommand( s ) ) )
+	if( !command.id && strcmp( s, "0" ) && !( command.id = G_ScriptRun_FindCommand( s ) ) )
 	{
 		Com_Printf( "Unknown command: %s\n", s );
 		command.id = 1;
