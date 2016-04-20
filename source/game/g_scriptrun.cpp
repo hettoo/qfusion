@@ -96,6 +96,11 @@ static void G_ScriptRun_Terminate_f()
 	trap_Cvar_ForceSet( "g_scriptRun", "0" );
 }
 
+static void G_ScriptRun_Nop_f()
+{
+	command.id = 0;
+}
+
 static void G_ScriptRun_Wait_f()
 {
 	if( command.iargs[0] )
@@ -185,6 +190,7 @@ static void G_ScriptRun_Use_f()
 	it = GS_Cmd_UseItem( &ent->r.client->ps, va( "%d", command.iargs[0] ), 0 );
 	if( it )
 		G_UseItem( ent, it );
+
 	command.id = 0;
 }
 
@@ -199,7 +205,9 @@ static struct scriptfunction_s {
 	const char *name;
 	void ( *f )( void );
 } scriptFunctions[] = {
+	// keep these first two where they are
 	{ "terminate", G_ScriptRun_Terminate_f },
+	{ "nop", G_ScriptRun_Nop_f },
 	{ "wait", G_ScriptRun_Wait_f },
 	{ "waitframe", G_ScriptRun_WaitFrame_f },
 	{ "print", G_ScriptRun_Print_f },
@@ -275,8 +283,11 @@ static int G_ScriptRun_LoadCommand( void )
 	const char *s = COM_Parse( &p );
 	memset( &command, 0, sizeof( command ) );
 	command.id = atoi( s );
-	if( !command.id )
-		command.id = G_ScriptRun_FindCommand( s );
+	if( !command.id && !( command.id = G_ScriptRun_FindCommand( s ) ) )
+	{
+		Com_Printf( "Unknown command: %s\n", s );
+		command.id = 1;
+	}
 	for( int i = 0; i < 6; i++ )
 	{
 		char *q = COM_Parse( &p );
