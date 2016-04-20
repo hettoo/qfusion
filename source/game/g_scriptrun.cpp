@@ -96,6 +96,14 @@ static void G_ScriptRun_Wait_f()
 		command = 0;
 }
 
+static void G_ScriptRun_WaitFrame_f()
+{
+    if( iargs[0] == ucmd.msec )
+		command = 0;
+    else
+        Com_Printf( "frametime %u\n", ucmd.msec );
+}
+
 static void G_ScriptRun_Angles_f()
 {
 	angles[0] = args[0];
@@ -153,6 +161,7 @@ static void G_ScriptRun_Strafe_f()
 static void ( *scriptFunctions[] )( void ) = {
 	G_ScriptRun_Terminate_f,
 	G_ScriptRun_Wait_f,
+	G_ScriptRun_WaitFrame_f,
 	G_ScriptRun_Angles_f,
 	G_ScriptRun_Forward_f,
 	G_ScriptRun_Up_f,
@@ -166,6 +175,7 @@ static void ( *scriptFunctions[] )( void ) = {
 static const char *names[] = {
 	"terminate",
 	"wait",
+	"waitframe",
 	"angles",
 	"forward",
 	"up",
