@@ -22,14 +22,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 cvar_t *g_scriptRun;
 
+typedef struct {
+    int id;
+    float args[6];
+    int iargs[6];
+} scriptcmd_t;
+
 static edict_t *ent;
 static usercmd_t ucmd;
 static bool running = false;
 static char buf[524288];
 static int bi;
-static int command;
-static float args[6];
-static int iargs[6];
+static scriptcmd_t command;
 
 static float angles[2];
 static int moves[3];
@@ -90,72 +94,72 @@ static void G_ScriptRun_Terminate_f()
 
 static void G_ScriptRun_Wait_f()
 {
-	if( iargs[0] )
-		iargs[0]--;
+	if( command.iargs[0] )
+		command.iargs[0]--;
 	else
-		command = 0;
+		command.id = 0;
 }
 
 static void G_ScriptRun_WaitFrame_f()
 {
-    if( iargs[0] == ucmd.msec )
-		command = 0;
+    if( command.iargs[0] == ucmd.msec )
+		command.id = 0;
     else
         Com_Printf( "frametime %u\n", ucmd.msec );
 }
 
 static void G_ScriptRun_Angles_f()
 {
-	angles[0] = args[0];
-	angles[1] = args[1];
-	command = 0;
+	angles[0] = command.args[0];
+	angles[1] = command.args[1];
+	command.id = 0;
 }
 
 static void G_ScriptRun_Forward_f()
 {
-	moves[0] = iargs[0];
-	command = 0;
+	moves[0] = command.iargs[0];
+	command.id = 0;
 }
 
 static void G_ScriptRun_Up_f()
 {
-	moves[1] = iargs[0];
-	command = 0;
+	moves[1] = command.iargs[0];
+	command.id = 0;
 }
 
 static void G_ScriptRun_Side_f()
 {
-	moves[2] = iargs[0];
-	command = 0;
+	moves[2] = command.iargs[0];
+	command.id = 0;
 }
 
 static void G_ScriptRun_Button_f()
 {
-	buttons |= iargs[0];
-	command = 0;
+	buttons |= command.iargs[0];
+	command.id = 0;
 }
 
 static void G_ScriptRun_UnButton_f()
 {
-	buttons &= ~iargs[0];
-	command = 0;
+	buttons &= ~command.iargs[0];
+	command.id = 0;
 }
 
 static void G_ScriptRun_Use_f()
 {
 	gsitem_t *it;
 
-	it = GS_Cmd_UseItem( &ent->r.client->ps, va( "%d", iargs[0] ), 0 );
+	it = GS_Cmd_UseItem( &ent->r.client->ps, va( "%d", command.iargs[0] ), 0 );
 	if( it )
 		G_UseItem( ent, it );
-	command = 0;
+	command.id = 0;
 }
 
 static void G_ScriptRun_Strafe_f()
 {
-	strafe = iargs[0];
-	strafeOffset = args[1];
-	command = 0;
+	strafe = command.iargs[0];
+	strafeOffset = command.args[1];
+	command.id = 0;
 }
 
 static void ( *scriptFunctions[] )( void ) = {
@@ -189,8 +193,8 @@ static const char *names[] = {
 
 int G_ScriptRun_LoadCommand( void )
 {
-	if( command && g_scriptRun->integer > 0 )
-		return command;
+	if( command.id && g_scriptRun->integer > 0 )
+		return command.id;
 
 	if( !running || g_scriptRun->integer < 0 )
 	{
@@ -224,27 +228,26 @@ int G_ScriptRun_LoadCommand( void )
 
 	const char *p = &buf[bi];
 	const char *s = COM_Parse( &p );
-	command = atoi( s );
-	if( !command )
+    memset( &command, 0, sizeof( command ) );
+	command.id = atoi( s );
+	if( !command.id )
 	{
 		for( int i = 0; names[i]; i++ )
 		{
 			if( !strcmp( names[i], s ) )
 			{
-				command = i;
+				command.id = i;
 				break;
 			}
 		}
 	}
-	memset( args, 0, sizeof( args ) );
-	memset( iargs, 0, sizeof( iargs ) );
 	for( int i = 0; i < 6; i++ )
 	{
 		char *q = COM_Parse( &p );
 		if( q )
 		{
-			args[i] = atof( q );
-			iargs[i] = atoi( q );
+			command.args[i] = atof( q );
+			command.iargs[i] = atoi( q );
 		}
 		else
 		{
@@ -253,7 +256,7 @@ int G_ScriptRun_LoadCommand( void )
 	}
 	bi = next;
 
-	return command;
+	return command.id;
 }
 
 bool G_ScriptRun_Strafe( void )
@@ -289,11 +292,11 @@ void G_ScriptRun( edict_t *new_ent )
 	bool repeat;
 	do
 	{
-		command = G_ScriptRun_LoadCommand();
-		running = command != 0;
+		command.id = G_ScriptRun_LoadCommand();
+		running = command.id != 0;
 		repeat = running;
-		scriptFunctions[command]();
-		repeat &= command == 0;
+		scriptFunctions[command.id]();
+		repeat &= command.id == 0;
 	}
 	while( repeat );
 
