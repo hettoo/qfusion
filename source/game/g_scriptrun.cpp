@@ -187,9 +187,18 @@ static void G_ScriptRun_Replay_f()
 
 static void G_ScriptRun_Angles_f()
 {
-	angles[0] = command.args[0];
-	angles[1] = command.args[1];
-	command.id = 0;
+	if( !command.iargs[2] )
+	{
+		angles[0] = command.args[0];
+		angles[1] = command.args[1];
+		command.id = 0;
+	}
+	else
+	{
+		angles[0] = command.args[0] / command.iargs[2] + ( command.iargs[2] - 1 ) * angles[0] / command.iargs[2];
+		angles[1] = command.args[1] / command.iargs[2] + ( command.iargs[2] - 1 ) * angles[1] / command.iargs[2];
+		command.iargs[2]--;
+	}
 }
 
 static void G_ScriptRun_Move_f( int n )
