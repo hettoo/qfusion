@@ -187,7 +187,7 @@ static void G_ScriptRun_Replay_f()
 
 static void G_ScriptRun_Angles_f()
 {
-	if( !command.iargs[2] )
+	if( command.iargs[2] <= 1 )
 	{
 		angles[0] = command.args[0];
 		angles[1] = command.args[1];
