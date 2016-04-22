@@ -341,7 +341,8 @@ static int G_ScriptRun_LoadCommand( void )
 	command.id = atoi( s );
 	if( !command.id && strcmp( s, "0" ) && !( command.id = G_ScriptRun_FindCommand( s ) ) )
 	{
-		Com_Printf( "Unknown command: %s\n", s );
+		if( s[0] != '-' )
+			Com_Printf( "Unknown command: %s\n", s );
 		command.id = 1;
 	}
 	for( int i = 0; i < 6; i++ )
