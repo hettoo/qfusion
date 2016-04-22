@@ -39,11 +39,14 @@ static int record;
 static int replay;
 static scriptcmd_t recordings[4096];
 
+static int fix;
 static float angles[2];
 static int moves[3];
 static int buttons;
 static int strafe;
 static float strafeOffset;
+
+static int G_ScriptRun_FindCommand( const char *name );
 
 static void G_ScriptRun_SetAngle( int n, float angle )
 {
@@ -201,6 +204,20 @@ static void G_ScriptRun_Angles_f()
 	}
 }
 
+static void G_ScriptRun_AngleAdd_f()
+{
+	command.args[0] += angles[0];
+	command.args[1] += angles[1];
+	command.id = G_ScriptRun_FindCommand( "angles" );
+	G_ScriptRun_Angles_f();
+}
+
+static void G_ScriptRun_Fix_f()
+{
+	fix = command.iargs[0];
+	command.id = 0;
+}
+
 static void G_ScriptRun_Move_f( int n )
 {
 	moves[n] = command.iargs[0];
@@ -270,7 +287,9 @@ static struct scriptfunction_s {
 	{ "record", G_ScriptRun_Record_f },
 	{ "stop", G_ScriptRun_Stop_f },
 	{ "replay", G_ScriptRun_Replay_f },
+	{ "fix", G_ScriptRun_Fix_f },
 	{ "angles", G_ScriptRun_Angles_f },
+	{ "angleadd", G_ScriptRun_AngleAdd_f },
 	{ "forward", G_ScriptRun_Forward_f },
 	{ "up", G_ScriptRun_Up_f },
 	{ "side", G_ScriptRun_Side_f },
@@ -298,6 +317,7 @@ static int G_ScriptRun_LoadCommand( void )
 
 	if( !running || g_scriptRun->integer < 0 )
 	{
+		fix = 1;
 		memset( angles, 0, sizeof( angles ) );
 		memset( moves, 0, sizeof( moves ) );
 		buttons = 0;
@@ -401,8 +421,11 @@ void G_ScriptRun( edict_t *new_ent )
 	ucmd.msec = game.frametime;
 	ucmd.serverTimeStamp = game.serverTime;
 
-	angles[0] = ent->r.client->ps.viewangles[0];
-	angles[1] = ent->r.client->ps.viewangles[1];
+	if( fix )
+	{
+		angles[0] = ent->r.client->ps.viewangles[0];
+		angles[1] = ent->r.client->ps.viewangles[1];
+	}
 
 	bool repeat;
 	do
