@@ -201,13 +201,6 @@ static void G_ScriptRun_Angles_f()
 	}
 }
 
-static void G_ScriptRun_Fix_f()
-{
-	angles[0] = ent->r.client->ps.viewangles[0];
-	angles[1] = ent->r.client->ps.viewangles[1];
-	command.id = 0;
-}
-
 static void G_ScriptRun_Move_f( int n )
 {
 	moves[n] = command.iargs[0];
@@ -278,7 +271,6 @@ static struct scriptfunction_s {
 	{ "stop", G_ScriptRun_Stop_f },
 	{ "replay", G_ScriptRun_Replay_f },
 	{ "angles", G_ScriptRun_Angles_f },
-	{ "fix", G_ScriptRun_Fix_f },
 	{ "forward", G_ScriptRun_Forward_f },
 	{ "up", G_ScriptRun_Up_f },
 	{ "side", G_ScriptRun_Side_f },
@@ -407,6 +399,9 @@ void G_ScriptRun( edict_t *new_ent )
 	memset( &ucmd, 0, sizeof( ucmd ) );
 	ucmd.msec = game.frametime;
 	ucmd.serverTimeStamp = game.serverTime;
+
+	angles[0] = ent->r.client->ps.viewangles[0];
+	angles[1] = ent->r.client->ps.viewangles[1];
 
 	bool repeat;
 	do
