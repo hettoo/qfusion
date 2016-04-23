@@ -345,6 +345,14 @@ static int G_ScriptRun_LoadCommand( void )
 		return command.id;
 	}
 
+	while( buf[bi] == '-' )
+	{
+		while( buf[bi] && buf[bi] != '\n' && buf[bi] != '\r' )
+			bi++;
+		while( buf[bi] == '\n' || buf[bi] == '\r' )
+			bi++;
+	}
+
 	if( !buf[bi] )
 		return 0;
 
@@ -361,8 +369,7 @@ static int G_ScriptRun_LoadCommand( void )
 	command.id = atoi( s );
 	if( !command.id && strcmp( s, "0" ) && !( command.id = G_ScriptRun_FindCommand( s ) ) )
 	{
-		if( s[0] != '-' )
-			Com_Printf( "Unknown command: %s\n", s );
+		Com_Printf( "Unknown command: %s\n", s );
 		command.id = 1;
 	}
 	for( int i = 0; i < 6; i++ )
