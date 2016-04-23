@@ -426,7 +426,14 @@ static void G_ScriptRun_Record( void )
 {
 	memcpy( &recordings[record++ - 1], &command, sizeof( command ) );
 	if( command.id == G_ScriptRun_FindCommand( "stop" ) )
+	{
 		record = 0;
+	}
+	else if( command.id == G_ScriptRun_FindCommand( "replay" ) )
+	{
+		for( int r = command.iargs[0]; recordings[r].id != G_ScriptRun_FindCommand( "stop" ); r++ )
+		memcpy( &recordings[record++ - 1], &recordings[r], sizeof( command ) );
+	}
 	command.id = 0;
 }
 
