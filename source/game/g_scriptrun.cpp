@@ -323,12 +323,21 @@ static int G_ScriptRun_LoadCommand( void )
 		buttons = 0;
 		strafe = 0;
 		strafeOffset = 0;
+		bi = 0;
 
 		int filenum;
-		int length = trap_FS_FOpenFile( va( "scriptruns/%s", level.mapname ), &filenum, FS_READ );
-		if( length == -1 )
+		int length = trap_FS_FOpenFile( "scriptruns/_common", &filenum, FS_READ );
+		if( filenum && length > 0 )
+		{
+			trap_FS_Read( buf, length, filenum );
+			bi = length;
+			buf[bi++] = '\n';
+		}
+		trap_FS_FCloseFile( filenum );
+		length = trap_FS_FOpenFile( va( "scriptruns/%s", level.mapname ), &filenum, FS_READ );
+		if( !filenum || length == -1 )
 			return 0;
-		trap_FS_Read( buf, length, filenum );
+		trap_FS_Read( &buf[bi], length, filenum );
 		trap_FS_FCloseFile( filenum );
 		bi = 0;
 		if( g_scriptRun->integer < 0 )
