@@ -694,7 +694,7 @@ bool G_PlayerCanTeleport( edict_t *player )
 void G_TeleportPlayer( edict_t *player, edict_t *dest )
 {
 	int i;
-	vec3_t velocity;
+	vec3_t velocity, dir;
 	mat3_t axis;
 	float speed;
 	gclient_t *client = player->r.client;
@@ -722,12 +722,22 @@ void G_TeleportPlayer( edict_t *player, edict_t *dest )
 	AnglesToAxis( dest->s.angles, axis );
 	VectorScale( &axis[AXIS_FORWARD], speed, client->ps.pmove.velocity );
 
-	VectorCopy( dest->s.angles, client->ps.viewangles );
-	VectorCopy( dest->s.origin, client->ps.pmove.origin );
+	if( speed )
+	{
+		VecToAngles( velocity, dir );
+		VectorAdd( client->ps.viewangles, dest->s.angles, client->ps.viewangles );
+		VectorSubtract( client->ps.viewangles, dir, client->ps.viewangles );
+	}
+	else
+	{
+		VectorCopy( dest->s.angles, client->ps.viewangles );
+	}
 
 	// set the delta angle
 	for ( i = 0; i < 3; i++ )
 		client->ps.pmove.delta_angles[i] = ANGLE2SHORT( client->ps.viewangles[i] ) - client->ucmd.angles[i];
+
+	VectorCopy( dest->s.origin, client->ps.pmove.origin );
 
 	client->ps.pmove.pm_flags |= PMF_TIME_TELEPORT;
 	client->ps.pmove.pm_time = 1; // force the minimum no control delay
