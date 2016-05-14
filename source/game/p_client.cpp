@@ -727,6 +727,17 @@ void G_TeleportPlayer( edict_t *player, edict_t *dest )
 		VecToAngles( velocity, dir );
 		VectorAdd( client->ps.viewangles, dest->s.angles, client->ps.viewangles );
 		VectorSubtract( client->ps.viewangles, dir, client->ps.viewangles );
+
+		// turn around if looking up or down too much
+		float p = fmod( fabs( client->ps.viewangles[PITCH] ), 360 );
+		if( p > 90 && p < 270 )
+		{
+			if( client->ps.viewangles[PITCH] > 0 )
+				client->ps.viewangles[PITCH] -= ( p - 90 ) * 2;
+			else
+				client->ps.viewangles[PITCH] += ( p - 90 ) * 2;
+			client->ps.viewangles[YAW] += 180;
+		}
 	}
 	else
 	{
