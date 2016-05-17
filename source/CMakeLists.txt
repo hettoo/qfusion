@@ -71,7 +71,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         "../libsrcs/libfreetype"
         "../libsrcs/libpng"
         "../libsrcs/libjpeg"
-        "../libsrcs/libRocket/libRocket/Include"
         "../libsrcs/SDL2/include"
     )
 
@@ -229,11 +228,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR MINGW)
 	add_custom_target(tar_gz COMMAND ${CMAKE_COMMAND} -E tar "cfvz" ${TAR_GZ_DIST} "${CMAKE_HOME_DIRECTORY}/build/")
 	add_dependencies(tar_gz ${QFUSION_CLIENT_NAME} game ${QFUSION_SERVER_NAME} ${QFUSION_TVSERVER_NAME})
 endif()
-
-# We build libRocket from source
-set(LIBROCKET_DIR ${CMAKE_HOME_DIRECTORY}/../libsrcs/libRocket/libRocket)
-set(LIBROCKET_INCLUDE_DIR ${LIBROCKET_DIR}/Include)
-set(LIBROCKET_SOURCE_DIR ${LIBROCKET_DIR}/Source)
 
 if (NOT GAME_MODULES_ONLY)
     if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
