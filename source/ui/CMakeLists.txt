@@ -17,7 +17,5 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}) # for ui_precompiled.h
 
 add_library(ui SHARED ${UI_SOURCES} ${UI_HEADERS})
 target_link_libraries(ui PRIVATE)
-add_dependencies(ui angelwrap)
-set_target_properties(ui PROPERTIES COMPILE_DEFINITIONS "")
 qf_set_output_dir(ui libs)
 set_property(TARGET ui PROPERTY CXX_STANDARD 11)
