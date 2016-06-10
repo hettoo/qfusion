@@ -51,6 +51,9 @@ int playerbox_gib_viewheight = 8;
 #define PM_CROUCHSLIDE 1500
 #define PM_CROUCHSLIDE_FADE 500
 #define PM_CROUCHSLIDE_TIMEDELAY 700
+#define PM_CROUCHSLIDE_FRICTION 0
+#define PM_CROUCHSLIDE_CONTROL 1
+#define PM_CROUCHSLIDE_ACCEL 0
 #define PM_FORWARD_ACCEL_TIMEDELAY 0 // delay before the forward acceleration kicks in
 
 //===============================================================
@@ -545,9 +548,9 @@ static void PM_Friction( void )
 			if( pm->playerState->pmove.pm_flags & PMF_CROUCH_SLIDING )
 			{
 				if( pm->playerState->pmove.stats[PM_STAT_CROUCHSLIDETIME] < PM_CROUCHSLIDE_FADE )
-					friction *= 1 - sqrt( (float)pm->playerState->pmove.stats[PM_STAT_CROUCHSLIDETIME] / PM_CROUCHSLIDE_FADE );
+					friction *= 1 - ( 1 - PM_CROUCHSLIDE_FRICTION ) * sqrt( (float)pm->playerState->pmove.stats[PM_STAT_CROUCHSLIDETIME] / PM_CROUCHSLIDE_FADE );
 				else
-					friction = 0;
+					friction = PM_CROUCHSLIDE_FRICTION;
 			}
 			drop += control * friction * pml.frametime;
 		}
@@ -579,6 +582,7 @@ static void PM_Friction( void )
 static void PM_Accelerate( vec3_t wishdir, float wishspeed, float accel )
 {
 	float addspeed, accelspeed, currentspeed, realspeed, newspeed;
+	bool crouchslide;
 
 	realspeed = VectorLengthFast( pml.velocity );
 
@@ -591,13 +595,18 @@ static void PM_Accelerate( vec3_t wishdir, float wishspeed, float accel )
 	if( accelspeed > addspeed )
 		accelspeed = addspeed;
 
+	crouchslide = pm->playerState->pmove.pm_flags & PMF_CROUCH_SLIDING && pm->groundentity != -1 && !( pml.groundsurfFlags & SURF_SLICK );
+
+	if( crouchslide )
+		accelspeed *= PM_CROUCHSLIDE_CONTROL;
+
 	VectorMA( pml.velocity, accelspeed, wishdir, pml.velocity );
 
-	if( pm->playerState->pmove.pm_flags & PMF_CROUCH_SLIDING && pm->groundentity != -1 && !( pml.groundsurfFlags & SURF_SLICK ) )
-	{ // disable overacceleration while crouch sliding
+	if( crouchslide )
+	{ // limit overacceleration while crouch sliding
 		newspeed = VectorLengthFast( pml.velocity );
 		if( newspeed > wishspeed && newspeed != 0 )
-			VectorScale( pml.velocity, fmax( wishspeed, realspeed ) / newspeed, pml.velocity );
+			VectorScale( pml.velocity, ( 1 - PM_CROUCHSLIDE_ACCEL ) * fmax( wishspeed, realspeed ) / newspeed + PM_CROUCHSLIDE_ACCEL, pml.velocity );
 	}
 }
 
